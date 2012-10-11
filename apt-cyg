@@ -134,72 +134,95 @@ command=""
 filepackages=""
 packages=""
 
-while test $# -gt 0
-do
-  case "$1" in
+function process_args () {
+  while test $# -gt 0
+  do
+    case "$1" in
 
-    --mirror|-m)
-      echo "$2" > /etc/setup/last-mirror
-      shift ; shift
-    ;;
+      --mirror|-m)
+        echo "$2" > /etc/setup/last-mirror
+        shift ; shift
+      ;;
 
-    --cache|-c)
-      cygpath -aw "$2" > /etc/setup/last-cache
-      shift ; shift
-    ;;
+      --cache|-c)
+        cygpath -aw "$2" > /etc/setup/last-cache
+        shift ; shift
+      ;;
 
-    --noscripts)
-      noscripts=1
-      shift
-    ;;
-
-    --noupdate|-u)
-      noupdate=1
-      shift
-    ;;
-
-    --help)
-      usage
-      exit 0
-    ;;
-
-    --version)
-      version
-      exit 0
-    ;;
-
-    --file|-f)
-      if ! test "-$2-" = "--"
-      then
-        file="$2"
-        dofile=1
+      --noscripts)
+        noscripts=1
         shift
-      else
-        echo 1>&2 No file name provided, ignoring $1
-      fi
-      shift
-    ;;
+      ;;
 
-    update|show|find|describe|packageof|install|remove)
-      if test "-$command-" = "--"
-      then
-        command=$1
-      else
+      --noupdate|-u)
+        noupdate=1
+        shift
+      ;;
+
+      --help)
+        usage
+        exit 0
+      ;;
+
+      --version)
+        version
+        exit 0
+      ;;
+
+      --file|-f)
+        if ! test "-$2-" = "--"
+        then
+          file="$2"
+          dofile=1
+          shift
+        else
+          echo 1>&2 No file name provided, ignoring $1
+        fi
+        shift
+      ;;
+
+      --ignore-case|-i)
+        nocase=1
+        shift
+      ;;
+
+     --no-ignore-case|-no-i)
+       nocase=0
+       shift
+     ;;
+
+      update|show|search|find|describe|packageof|install|remove)
+        if test "-$command-" = "--"
+        then
+          command=$1
+        else
+          packages="$packages $1"
+        fi
+        shift
+
+      ;;
+
+      *)
         packages="$packages $1"
-      fi
-      shift
+        shift
 
-    ;;
+      ;;
 
-    *)
-      packages="$packages $1"
-      shift
+    esac
+  done
+}
 
-    ;;
+# Check to see if global options are defined
+if [[ ! -z "$APTCYG_OPTIONS" ]] ; then
+  # If we only have one element, assume it's a string to split
+  #  and parse as an array
+  if [[ "${#APTCYG_OPTIONS[*]}" -eq "1" ]] ; then
+    APTCYG_OPTIONS=($APTCYG_OPTIONS)
+  fi
+  process_args "${APTCYG_OPTIONS[@]}"
+fi
 
-  esac
-done
-
+process_args "$@"
 
 if test $dofile = 1
 then
