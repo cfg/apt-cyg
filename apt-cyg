@@ -38,6 +38,7 @@ function usage()
   echo "  \"apt-cyg update\" to update setup.ini"
   echo "  \"apt-cyg show\" to show installed packages"
   echo "  \"apt-cyg find <patterns>\" to find packages matching patterns"
+  echo "  \"apt-cyg search <patterns>\" to find packages matching patterns (alias of find)"
   echo "  \"apt-cyg describe <patterns>\" to describe packages matching patterns"
   echo "  \"apt-cyg packageof <commands or files>\" to locate parent packages"
   echo "Options:"
@@ -45,6 +46,7 @@ function usage()
   echo "  --cache, -c <dir>  : set cache"
   echo "  --file, -f <file>  : read package names from file"
   echo "  --noupdate, -u     : don't update setup.ini from mirror"
+  echo "  --ignore-case, -i  : Ignore case distinctions in <patterns> when finding packages"
   echo "  --help"
   echo "  --version"
 }
@@ -130,6 +132,7 @@ noscripts=0
 noupdate=0
 file=""
 dofile=0
+nocase=0
 command=""
 filepackages=""
 packages=""
@@ -254,7 +257,7 @@ case "$command" in
   ;;
 
 
-  find)
+  find|search)
 
     checkpackages
     findworkspace
@@ -264,11 +267,16 @@ case "$command" in
     do
       echo ""
       echo Searching for installed packages matching $pkg:
-      awk '/[^ ]+ [^ ]+ 0/ {if ($1 ~ query) print $1}' query="$pkg" /etc/setup/installed.db
+      awk -v nocase="$nocase" '/[^ ]+ [^ ]+ 0/ { if (nocase == 1 ) { IGNORECASE=1 } if ($1 ~ query) { print $1 } }' query="$pkg" /etc/setup/installed.db
       echo ""
       echo Searching for installable packages matching $pkg:
-      cat setup.ini | awk -v query="$pkg" \
-        'BEGIN{RS="\n\n@ "; FS="\n"; ORS="\n"} {if ($1 ~ query) {print $1}}'
+      if [[ "$nocase" -eq "1" ]] ; then
+        cat setup.ini | awk -v query="$pkg" \
+          'BEGIN{RS="\n\n@ "; FS="\n"; ORS="\n"} {IGNORECASE=1; if ($1 ~ query) {print $1}}'
+      else
+        cat setup.ini | awk -v query="$pkg" \
+          'BEGIN{RS="\n\n@ "; FS="\n"; ORS="\n"} {if ($1 ~ query) {print $1}}'
+      fi
     done
 
   ;;
@@ -282,8 +290,8 @@ case "$command" in
     for pkg in $packages
     do
       echo ""
-      cat setup.ini | awk -v query="$pkg" \
-        'BEGIN{RS="\n\n@ "; FS="\n"; ORS="\n"} {if ($1 ~ query) {print $0 "\n"}}'
+      cat setup.ini | awk -v nocase="$nocase" -v query="$pkg" \
+        'BEGIN{RS="\n\n@ "; FS="\n"; ORS="\n"} {if (nocase == 1 ) { IGNORECASE=1 } if ($1 ~ query) {print $0 "\n"}}'
     done
 
   ;;
@@ -319,15 +327,63 @@ case "$command" in
     findworkspace
     getsetup
 
+    declare -A pkg_lookup
+    declare -A pkg_already_installed
+
+    # sanity check - find our currently installed packages, and resolve all case-insensitive names to their correct ones
+    for pkg in $packages ; do
+      # check for previously installed packages
+      pkg_already_installed[$pkg]="0"
+      pkg_lookup[$pkg]="$pkg"
+
+      # case insensitive search
+      if [[ "$nocase" -eq "1" ]] ; then
+        already=`grep -ic "^$pkg " /etc/setup/installed.db`
+        if test $already -ge 1 ; then
+          # get the proper name for the package
+          proper_name=`grep -i "^$pkg " /etc/setup/installed.db | awk '{ print $1 }'`
+          # set our lookup value
+          pkg_lookup[$pkg]="$proper_name"
+          pkg_already_installed[$pkg]="1"
+        fi
+
+      # case sensitive search
+      else
+        already=`grep -c "^$pkg " /etc/setup/installed.db`
+      fi
+
+      if test $already -ge 1 ; then
+        pkg_already_installed[$pkg]="1"
+        continue
+      fi
+
+      # check for new packages and find their proper names
+      if [[ "$nocase" -eq "1" ]] ; then
+        proper_name=`cat setup.ini | awk -v package="$pkg" \
+          'BEGIN{IGNORECASE=1; RS="\n\n@ "; FS="\n"} { if ($1 == package) { propername = $1 ; desc = $0; px++ } } \
+           END {if (px == 1 && desc != "") { print propername ; exit 0 } else { print "Package not found" ; exit 1 } }'`
+        if [[ "$?" != "0" ]] ; then
+          echo "Could not find $pkg, aborting..."
+          exit
+        else
+          echo proper name of $pkg is: $proper_name
+          pkg_lookup[$pkg]="$proper_name"
+          continue
+        fi
+      fi
+    done
+
     for pkg in $packages
     do
-
-    already=`grep -c "^$pkg " /etc/setup/installed.db`
-    if test $already -ge 1
-    then
-      echo Package $pkg is already installed, skipping
+    if [[ ${pkg_already_installed[$pkg]} -eq 1 ]] ; then
+      echo "Package $pkg is already installed, skipping"
       continue
     fi
+
+    echo Installing $pkg as ${pkg_lookup[$pkg]}...
+    user_pkg_name="$pkg"
+    pkg="${pkg_lookup[$pkg]}"
+
     echo ""
     echo Installing $pkg
 
@@ -351,10 +407,16 @@ case "$command" in
 
     # pick the latest version, which comes first
     install=`cat "release/$pkg/desc" | awk '/^install: / { print $2; exit }'`
+    category=`cat "release/$pkg/desc" | awk '/^category: / { print $2; exit }'`
+    requires=`cat "release/$pkg/desc" | awk '/^requires: / { print $2; exit }'`
 
     if test "-$install-" = "--"
     then
-      echo "Could not find \"install\" in package description: obsolete package?"
+      if [[ "$category" == "_obsolete" && ! -z "$requires" ]] ; then
+        echo "$pkg is obsolete and replaced by: $requires"
+      else
+        echo "Could not find \"install\" in package description: obsolete package?"
+      fi
       exit 1
     fi
 
