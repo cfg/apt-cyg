@@ -104,6 +104,7 @@ function findworkspace()
         ;;
       x86_64)
         arch=x86_64
+        ;;
     esac
     mirror="$mirror/$arch"
     mirrordir="$mirrordir/$arch"
