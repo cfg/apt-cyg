@@ -20,7 +20,7 @@ Quick start
 -----------
 First install wget through the standard cygwin setup program. Then run the following commands:
 
-    # wget -O/usr/bin/apt-cyg https://raw.github.com/cfg/apt-cyg/master/apt-cyg; chmod +x /usr/bin/apt-cyg
+    # wget -O/usr/bin/apt-cyg --no-check-certificate https://raw.github.com/cfg/apt-cyg/master/apt-cyg; chmod +x /usr/bin/apt-cyg
 
 use apt-cyg, for example:
 
