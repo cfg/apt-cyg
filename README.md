@@ -1,7 +1,7 @@
 apt-cyg
 =======
 
-Fork of [apt-cyg](http://code.google.com/p/apt-cyg/) from http://code.google.com/p/apt-cyg/
+Fork of [apt-cyg](http://code.google.com/p/apt-cyg/) from Google Code
 
 Intro
 -----
@@ -18,10 +18,9 @@ apt-cyg is a command-line installer for Cygwin which cooperates with Cygwin Setu
 
 Quick start
 -----------
-First install curl and wget through the standard cygwin setup program. Then run the following commands:
+First install wget through the standard cygwin setup program. Then run the following commands:
 
-    # curl -o /usr/bin/apt-cyg https://raw.github.com/cfg/apt-cyg/master/apt-cyg
-    # chmod +x /usr/bin/apt-cyg
+    # wget -O/usr/bin/apt-cyg https://raw.github.com/cfg/apt-cyg/master/apt-cyg; chmod +x /usr/bin/apt-cyg
 
 use apt-cyg, for example:
 
