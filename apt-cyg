@@ -95,19 +95,19 @@ function findworkspace()
   fi
   mirrordir="`echo "$mirror" | sed -e "s/:/%3a/g" -e "s:/:%2f:g"`"
 
+  arch=""
   cygver="`uname -r | sed -e "s/^\([0-9\.]\+\).*$/\1/"`"
   if test "1.7.22" = "`echo -e "1.7.22\n$cygver" | sort -V | head -n1`"
   then
     case `uname -m` in
       i[3456]86)
-        arch=x86
+        arch="/x86"
         ;;
       x86_64)
-        arch=x86_64
+        arch="/x86_64"
         ;;
     esac
-    mirror="$mirror/$arch"
-    mirrordir="$mirrordir/$arch"
+    mirrordir="$mirrordir$arch"
   fi
 
   echo Working directory is $cache
@@ -123,14 +123,14 @@ function getsetup()
   then
     touch setup.ini
     mv setup.ini setup.ini-save
-    wget -N $mirror/setup.bz2
+    wget -N "$mirror$arch/setup.bz2"
     if test -e setup.bz2 && test $? -eq 0
     then
       bunzip2 setup.bz2
       mv setup setup.ini
       echo Updated setup.ini
     else
-      wget -N $mirror/setup.ini
+      wget -N "$mirror$arch/setup.ini"
       if test -e setup.ini && test $? -eq 0
       then
         echo Updated setup.ini
@@ -579,4 +579,3 @@ case "$command" in
   ;;
 
 esac
-
