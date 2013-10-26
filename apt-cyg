@@ -94,7 +94,7 @@ function findworkspace()
 
 function getsetup()
 {
-  if test "$noscripts" == "0" -a "$noupdate" == "0"
+  if test "$noscripts" = "0" -a "$noupdate" = "0"
   then
     touch setup.ini
     mv setup.ini setup.ini-save
@@ -420,7 +420,7 @@ case "$command" in
 
     if test "-$install-" = "--"
     then
-      if [[ "$category" == "_obsolete" && ! -z "$requires" ]] ; then
+      if [[ "$category" = "_obsolete" && ! -z "$requires" ]] ; then
         echo "$pkg is obsolete and replaced by: $requires"
       else
         echo "Could not find \"install\" in package description: obsolete package?"
@@ -442,7 +442,7 @@ case "$command" in
     fi
 
     echo "Unpacking..."
-    if test ${file: -3} == ".xz"
+    if test ${file: -3} = ".xz"
     then
       cat $file | xz -d | tar > "/etc/setup/$pkg.lst" xvf - -C /
     else
