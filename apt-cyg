@@ -2,7 +2,7 @@
 
 # apt-cyg: install tool for cygwin similar to debian apt-get
 #
-# Copyright (C) 2005-9, Stephen Jungels
+# Copyright (C) 2005-13, Stephen Jungels
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -30,6 +30,16 @@ then
   exit 1
 fi
 
+# auto set arch based on dumpmachine - defaults to x86
+GCC=`which gcc 2> /dev/null`
+if [[ "-GCC-" != "--" ]] ; then
+  pc=`gcc -dumpmachine`
+  if [[ $pc =~ ^i686 ]] ; then
+    arch="x86"
+  else
+    arch="x86_64"
+  fi
+fi
 
 function usage()
 {
@@ -42,22 +52,23 @@ function usage()
   echo "  \"apt-cyg search <patterns>\" to find packages matching patterns (alias of find)"
   echo "  \"apt-cyg describe <patterns>\" to describe packages matching patterns"
   echo "  \"apt-cyg packageof <commands or files>\" to locate parent packages"
+  echo
   echo "Options:"
   echo "  --mirror, -m <url> : set mirror"
   echo "  --cache, -c <dir>  : set cache"
   echo "  --file, -f <file>  : read package names from file"
   echo "  --noupdate, -u     : don't update setup.ini from mirror"
   echo "  --ignore-case, -i  : ignore case distinctions in <patterns> when finding packages"
-  echo "  --x64, -x          : load the x86_64 setup.ini files and packages"
+  echo "  --x32              : load the (32bit) x86 setup.ini files and packages"
+  echo "  --x64              : load the (64bit) x86_64 setup.ini files and packages"
   echo "  --help"
   echo "  --version"
 }
 
 
-
 function version()
 {
-  echo "apt-cyg version 0.59"
+  echo "apt-cyg version 0.60"
   echo "Written by Stephen Jungels"
   echo ""
   echo "Copyright (c) 2005-13 Stephen Jungels.  Released under the GPL."
@@ -98,14 +109,14 @@ function getsetup()
   then
     touch setup.ini
     mv setup.ini setup.ini-save
-    wget -N $mirror/x86$x64/setup.bz2
+    wget -N $mirror/$arch/setup.bz2
     if test -e setup.bz2 && test $? -eq 0
     then
       bunzip2 setup.bz2
       mv setup setup.ini
       echo Updated setup.ini
     else
-      wget -N $mirror/x86$x64/setup.ini
+      wget -N $mirror/$arch/setup.ini
       if test -e setup.ini && test $? -eq 0
       then
         echo Updated setup.ini
@@ -138,7 +149,7 @@ nocase=0
 command=""
 filepackages=""
 packages=""
-x64=""
+arch=${arch-"x86"}
 
 function process_args () {
   while test $# -gt 0
@@ -165,8 +176,13 @@ function process_args () {
         shift
       ;;
 
-      --x64|-x)
-        x64="_64"
+      --x32)
+        arch="x86"
+        shift
+      ;;
+
+      --x64)
+        arch="x86_64"
         shift
       ;;
 
