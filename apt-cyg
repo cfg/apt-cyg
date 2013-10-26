@@ -13,7 +13,6 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
 # (http://www.fsf.org/licensing/licenses/gpl.html)
 
 # this script requires some packages
@@ -33,9 +32,9 @@ fi
 # auto set arch based on machine
 machine=`uname -m`
 if [[ $machine =~ ^i[3456]86 ]] ; then
-	arch="x86"
+  arch="x86"
 else
-	arch="x86_64"
+  arch="x86_64"
 fi
 
 function usage()
@@ -65,6 +64,7 @@ function usage()
 
 function version()
 {
+  # $Id: apt-cyg,v 1.14 2013-10-25 23:03:19-07 caseman Exp $
   echo "apt-cyg version 0.60"
   echo "Written by Stephen Jungels"
   echo ""
