@@ -2,7 +2,7 @@
 
 # apt-cyg: install tool for cygwin similar to debian apt-get
 #
-# Copyright (C) 2005-9, Stephen Jungels
+# Copyright (C) 2005-13, Stephen Jungels
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -13,7 +13,6 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-#
 # (http://www.fsf.org/licensing/licenses/gpl.html)
 
 # this script requires some packages
@@ -22,17 +21,25 @@ WGET=`which wget 2> /dev/null`
 BZIP2=`which bzip2 2> /dev/null`
 TAR=`which tar 2> /dev/null`
 GAWK=`which awk 2> /dev/null`
+XZ=`which xz 2> /dev/null`
 if test "-$WGET-" = "--" || test "-$BZIP2-" = "--" || test "-$TAR-" = "--" \
-  || test "-$GAWK-" = "--"
+  || test "-$GAWK-" = "--" || test "-$XZ-" = "--"
 then
-  echo You must install wget, tar, gawk and bzip2 to use apt-cyg.
+  echo You must install wget, tar, gawk, xz and bzip2 to use apt-cyg.
   exit 1
 fi
 
+# auto set arch based on machine
+machine=`uname -m`
+if [[ $machine =~ ^i[3456]86 ]] ; then
+  arch="x86"
+else
+  arch="x86_64"
+fi
 
 function usage()
 {
-  echo apt-cyg: Installs and removes Cygwin packages.
+  echo apt-cyg: installs and removes Cygwin packages.
   echo "  \"apt-cyg install <package names>\" to install packages"
   echo "  \"apt-cyg remove <package names>\" to remove packages"
   echo "  \"apt-cyg update\" to update setup.ini"
@@ -41,24 +48,27 @@ function usage()
   echo "  \"apt-cyg search <patterns>\" to find packages matching patterns (alias of find)"
   echo "  \"apt-cyg describe <patterns>\" to describe packages matching patterns"
   echo "  \"apt-cyg packageof <commands or files>\" to locate parent packages"
+  echo
   echo "Options:"
   echo "  --mirror, -m <url> : set mirror"
   echo "  --cache, -c <dir>  : set cache"
   echo "  --file, -f <file>  : read package names from file"
   echo "  --noupdate, -u     : don't update setup.ini from mirror"
-  echo "  --ignore-case, -i  : Ignore case distinctions in <patterns> when finding packages"
+  echo "  --ignore-case, -i  : ignore case distinctions in <patterns> when finding packages"
+  echo "  --x32              : load the (32bit) x86 setup.ini files and packages"
+  echo "  --x64              : load the (64bit) x86_64 setup.ini files and packages"
   echo "  --help"
   echo "  --version"
 }
 
 
-
 function version()
 {
-  echo "apt-cyg version 0.57"
+  # $Id: apt-cyg,v 1.14 2013-10-25 23:03:19-07 caseman Exp $
+  echo "apt-cyg version 0.60"
   echo "Written by Stephen Jungels"
   echo ""
-  echo "Copyright (c) 2005-9 Stephen Jungels.  Released under the GPL."
+  echo "Copyright (c) 2005-13 Stephen Jungels.  Released under the GPL."
 }
 
 
@@ -92,18 +102,18 @@ function findworkspace()
 
 function getsetup()
 {
-  if test "$noscripts" == "0" -a "$noupdate" == "0"
+  if test "$noscripts" = "0" -a "$noupdate" = "0"
   then
     touch setup.ini
     mv setup.ini setup.ini-save
-    wget -N $mirror/setup.bz2
+    wget -N $mirror/$arch/setup.bz2
     if test -e setup.bz2 && test $? -eq 0
     then
       bunzip2 setup.bz2
       mv setup setup.ini
       echo Updated setup.ini
     else
-      wget -N $mirror/setup.ini
+      wget -N $mirror/$arch/setup.ini
       if test -e setup.ini && test $? -eq 0
       then
         echo Updated setup.ini
@@ -136,6 +146,7 @@ nocase=0
 command=""
 filepackages=""
 packages=""
+arch=${arch-"x86"}
 
 function process_args () {
   while test $# -gt 0
@@ -159,6 +170,16 @@ function process_args () {
 
       --noupdate|-u)
         noupdate=1
+        shift
+      ;;
+
+      --x32)
+        arch="x86"
+        shift
+      ;;
+
+      --x64)
+        arch="x86_64"
         shift
       ;;
 
@@ -412,7 +433,7 @@ case "$command" in
 
     if test "-$install-" = "--"
     then
-      if [[ "$category" == "_obsolete" && ! -z "$requires" ]] ; then
+      if [[ "$category" = "_obsolete" && ! -z "$requires" ]] ; then
         echo "$pkg is obsolete and replaced by: $requires"
       else
         echo "Could not find \"install\" in package description: obsolete package?"
@@ -434,7 +455,12 @@ case "$command" in
     fi
 
     echo "Unpacking..."
-    cat $file | bunzip2 | tar > "/etc/setup/$pkg.lst" xvf - -C /
+    if test ${file: -3} = ".xz"
+    then
+      cat $file | xz -d | tar > "/etc/setup/$pkg.lst" xvf - -C /
+    else
+      cat $file | bunzip2 | tar > "/etc/setup/$pkg.lst" xvf - -C /
+    fi
     gzip -f "/etc/setup/$pkg.lst"
     cd ../..
 
@@ -508,7 +534,7 @@ case "$command" in
       continue
     fi
 
-    dontremove="cygwin coreutils gawk bzip2 tar wget bash"
+    dontremove="cygwin coreutils gawk bzip2 tar xz wget bash"
     for req in $dontremove
     do
       if test "-$pkg-" = "-$req-"
@@ -552,4 +578,3 @@ case "$command" in
   ;;
 
 esac
-
