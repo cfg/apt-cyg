@@ -30,15 +30,12 @@ then
   exit 1
 fi
 
-# auto set arch based on dumpmachine - defaults to x86
-GCC=`which gcc 2> /dev/null`
-if [[ "-GCC-" != "--" ]] ; then
-  pc=`gcc -dumpmachine`
-  if [[ $pc =~ ^i686 ]] ; then
-    arch="x86"
-  else
-    arch="x86_64"
-  fi
+# auto set arch based on machine
+machine=`uname -m`
+if [[ $machine =~ ^i[3456]86 ]] ; then
+	arch="x86"
+else
+	arch="x86_64"
 fi
 
 function usage()
