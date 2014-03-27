@@ -124,14 +124,14 @@ function getsetup()
     touch setup.ini
     mv setup.ini setup.ini-save
     wget -N "$mirror$arch/setup.bz2"
-    if test -e setup.bz2 && test $? -eq 0
+    if test $? -eq 0 && test -e setup.bz2
     then
       bunzip2 setup.bz2
       mv setup setup.ini
       echo Updated setup.ini
     else
       wget -N "$mirror$arch/setup.ini"
-      if test -e setup.ini && test $? -eq 0
+      if test $? -eq 0 && test -e setup.ini
       then
         echo Updated setup.ini
       else
@@ -461,7 +461,17 @@ case "$command" in
     fi
 
     echo "Unpacking..."
-    cat $file | bunzip2 | tar > "/etc/setup/$pkg.lst" xvf - -C /
+    file_ext=`echo $file | awk -F. '{print $NF}'`
+    unpacker=bunzip2
+    case $file_ext in
+      bz2)
+        unpacker=bunzip2 ;;
+      gz)
+        unpacker=gunzip ;;
+      xz)
+        unpacker=unxz ;;
+    esac
+    cat $file | $unpacker | tar > "/etc/setup/$pkg.lst" xvf - -C /
     gzip -f "/etc/setup/$pkg.lst"
     cd ../..
 
